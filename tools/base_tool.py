@@ -1,18 +1,20 @@
-from abc import ABC, abstractmethod
+
 
 class BaseTool(ABC):
     
+    @property
     @abstractmethod
     def name(self) -> str:
         """name of the tool"""
-        pass
+        raise NotImplementedError
     
+    @property
     @abstractmethod
     def description(self) -> str:
         """Description of the tool(important because it's how the llm will understand that it should use this tool)"""
-        pass
+        raise NotImplementedError
     
     @abstractmethod
-    def execute(self, *args, **kwargs):
+    def execute(self, inputs: dict[str, Any]) -> Any:
         """Execute the tool with the given parameters"""
-        pass
+        raise NotImplementedError
