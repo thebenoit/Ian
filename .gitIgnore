@@ -7,6 +7,8 @@
 aienvi
 .DS_Store
 .idea
+envi
+__pycache__
 
 
 

@@ -36,4 +36,3 @@ class BaseDatabase(ABC):
         """update a listing in the database"""
         raise NotImplementedError
     
-    @abstractmethod

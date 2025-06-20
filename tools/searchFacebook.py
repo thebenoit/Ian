@@ -2,6 +2,9 @@ from typing import Any
 import os
 from dotenv import load_dotenv
 from seleniumwire import webdriver  # Import from seleniumwire
+import sys
+#from setuptools._distutils import version as _version
+#sys.modules['distutils.version'] = _version
 import seleniumwire.undetected_chromedriver as uc
 from selenium.webdriver.common.by import By
 from pymongo import MongoClient 
@@ -25,21 +28,23 @@ from time import sleep
 
 load_dotenv()
 
-from tools import BaseTool, BaseScraper
+from base_tool import BaseTool
+from bases.base_scraper import BaseScraper
 
 class SearchFacebook(BaseTool, BaseScraper):
-    def __init__(self):
-        self.name = "search_facebook"
-        self.description = "Search in facebook marketplace for a listing according to the user's request(query)"
-
-    def execute(self, inputs: dict[str, Any]) -> Any:
-        query = inputs.get("query")
-        
-        return "Facebook search result"
     
-    def scrape(self,url:str) -> str:
-     try:
-        ##change according to the computer install here: https://googlechromelabs.github.io/chrome-for-testing/#stable
+    @property
+    def name(self) -> str:
+        return "search_facebook"
+    
+    @property
+    def description(self) -> str:
+        return "Search in facebook marketplace for a listing according to the user's request(query)"
+    
+    def __init__(self,url:str):
+        
+        self.url = url
+                ##change according to the computer install here: https://googlechromelabs.github.io/chrome-for-testing/#stable
         self.driver = os.getenv("DRIVER_PATH")
         
         proxies = {
@@ -47,11 +52,19 @@ class SearchFacebook(BaseTool, BaseScraper):
             "https": os.getenv("PROXIES_URL")
         }
         
+        proxy_options = {}
+        
         chrome_options = uc.ChromeOptions()
         chrome_options.add_argument('--ignore-ssl-errors=yes')
         chrome_options.add_argument('--ignore-certificate-errors')
         
         service = Service(self.driver)
+        
+        self.driver = uc.Chrome(
+            service=service,
+            options=chrome_options,
+            seleniumwire_options=proxy_options            
+        )
         
         self.session =  requests.Session()
         self.session.proxies.update(proxies)
@@ -62,13 +75,15 @@ class SearchFacebook(BaseTool, BaseScraper):
         
         self.max_retries = 3
         self.retry_delay = 10
+
+    def execute(self, inputs: dict[str, Any]) -> Any:
+        query = inputs.get("query")
         
-     except Exception as e:
-        print(f"Error during the initialization of the Scraper: {e}")
-        raise
+        return "Facebook search result"
     
     def get_first_req(self):
-        self.driver.get(f"https://www.facebook.com/marketplace/montreal/propertyrentals?exact=false&latitude=45.50889&longitude=-73.63167&radius=7&locale=fr_CA")
+        self.driver.get(self.url)
+        #self.driver.get(f"https://www.facebook.com/marketplace/montreal/propertyrentals?exact=false&latitude=45.50889&longitude=-73.63167&radius=7&locale=fr_CA")
         #allow the page to load fully including any JavaScript that triggers API requests
         time.sleep(15)
 
@@ -120,6 +135,66 @@ class SearchFacebook(BaseTool, BaseScraper):
         # Parse the string into a dictionary
         data_dict = dict(urllib.parse.parse_qsl(decoded_str))
         
-        return data_dict    
+        return data_dict
     
+    def init_session(self):
+        try:
+            headers, payload_to_send, resp_body = self.get_first_req()  
+        except Exception as e:
+            print(f"Erreur lors de l'obtention de la première requête : {e} header: {headers}")
+              
+        self.next_cursor = self.get_next_cursor(resp_body)
+
+        # load headers to requests Sesssion
+        self.load_headers(headers)
+        print(f"les headers ont été chargés: {headers}")
+
+        # parse payload to normal format
+        self.payload_to_send = self.parse_payload(payload_to_send)
+        print(f"le payload a été chargé: {self.payload_to_send}")
+
+        # update the api name we're using (map api)
+        self.payload_to_send["fb_api_req_friendly_name"] = "CometMarketplaceRealEstateMapStoryQuery"
+        
+        # self.variables = json.loads(self.payload_to_send["variables"])
+        self.variables =  {"buyLocation":{"latitude":45.4722,"longitude":-73.5848},"categoryIDArray":[1468271819871448],"numericVerticalFields":[],"numericVerticalFieldsBetween":[],"priceRange":[0,214748364700],"radius":2000,"stringVerticalFields":[]}
+    
+    
+    def scrape(self, lat, lon):
+        for attempt in range(self.max_retries):
+            # Méthode pour scraper les données à une position géographique donnée
+            try:
+                # Met à jour les coordonnées de recherche dans les variables
+                self.variables["buyLocation"]["latitude"] = lat
+                self.variables["buyLocation"]["longitude"] = lon
+                
+                # Convertit les variables en JSON et les ajoute au payload
+                self.payload_to_send["variables"] = json.dumps(self.variables)
+
+                # Fait une requête POST à l'API GraphQL de Facebook
+                resp_body = self.session.post("https://www.facebook.com/api/graphql/", data=urllib.parse.urlencode(self.payload_to_send))
+                
+                # Vérifie que la réponse contient bien les données d'appartements
+                while "marketplace_rentals_map_view_stories" not in resp_body.json()["data"]["viewer"]:
+                    print("error") # Affiche une erreur 
+                    print(f" resp json {resp_body.json()["data"]["viewer"]}") # Affiche la réponse pour debug
+                    # Réessaie la requête
+                    resp_body = self.session.post("https://www.facebook.com/api/graphql/", data=urllib.parse.urlencode(self.payload_to_send))
+
+                # Ajoute les annonces trouvées à la base de données
+                self.add_listings(resp_body.json())
+
+            except Exception as e:
+                print(f"Erreur lors de la tentatice {attempt + 1}: {str(e)}")
+                if attempt < self.max_retries - 1:
+                    sleep_time = self.retry_delay * (attempt + 1) + random.uniform(1, 5)
+                    print(f"Nouvelle tentative dans {sleep_time} secondes...")
+                    sleep(sleep_time)
+                else:
+                    print("Nombre maximum de tentatives atteint, passage au point suivant")
+                    return False
+
+            # Attend 5 secondes entre chaque requête
+            time.sleep(5)
+        return False    
     
