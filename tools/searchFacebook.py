@@ -6,6 +6,7 @@ import sys
 #from setuptools._distutils import version as _version
 #sys.modules['distutils.version'] = _version
 import seleniumwire.undetected_chromedriver as uc
+from seleniumwire.undetected_chromedriver import Chrome
 from selenium.webdriver.common.by import By
 from pymongo import MongoClient 
 from seleniumwire.utils import decode
@@ -46,6 +47,9 @@ class SearchFacebook(BaseTool, BaseScraper):
         self.url = url
                 ##change according to the computer install here: https://googlechromelabs.github.io/chrome-for-testing/#stable
         self.driver = os.getenv("DRIVER_PATH")
+        self.har = None
+        self.listings = []
+        
         
         proxies = {
             "http": os.getenv("PROXIES_URL"),
@@ -55,37 +59,81 @@ class SearchFacebook(BaseTool, BaseScraper):
         proxy_options = {}
         
         chrome_options = uc.ChromeOptions()
+        #ignore ssl errors
         chrome_options.add_argument('--ignore-ssl-errors=yes')
         chrome_options.add_argument('--ignore-certificate-errors')
         
         service = Service(self.driver)
         
+        #seleniumwire options
+        sw_options = {   
+            "enable_har": True,
+            "proxy": proxies
+        }   
         self.driver = uc.Chrome(
             service=service,
             options=chrome_options,
-            seleniumwire_options=proxy_options            
+            seleniumwire_options={"enable_har": True},
+                          
         )
         
-        self.session =  requests.Session()
-        self.session.proxies.update(proxies)
-        self.session.verify = False
+        self.get_har()
+        self.get_har_headers()
         
-        self.init_session()
-        self.driver.close()
         
-        self.max_retries = 3
-        self.retry_delay = 10
+        #create a http session
+        # self.session =  requests.Session() # Permet de réutiliser connexions, cookies et en-têtes entre plusieurs requêtes.
+        # self.session.proxies.update(proxies)
+        # #ignore ssl errors
+        # self.session.verify = False
+        
+        # self.init_session()
+        # #close the driver
+        # self.driver.close()
+        
+        # self.max_retries = 3
+        # self.retry_delay = 10
 
     def execute(self, inputs: dict[str, Any]) -> Any:
         query = inputs.get("query")
         
         return "Facebook search result"
     
+    ##methode to get the har file from the driver
+    def get_har(self):
+        self.driver.get(self.url)
+        time.sleep(3)
+        raw_har = self.driver.har
+        # si c'est une chaîne JSON, on la parse
+        if isinstance(raw_har, str):
+            self.har = json.loads(raw_har)
+        else:
+            self.har = raw_har
+        
+        # Write HAR data to file
+        with open('facebook.har', 'w') as f:
+            json.dump(self.har, f, indent=4)
+            
+        #print(f"har: {self.har}")
+        self.driver.close()
+        
+        return self.har
+    
+    def get_har_headers(self):      
+        # Extrait les headers de toutes les requêtes dans le HAR
+        headers = {}
+        for entry in self.har['log']['entries']:
+            request = entry['request']
+            headers[request['url']] = request['headers']
+        return headers
+    
+    
     def get_first_req(self):
         self.driver.get(self.url)
         #self.driver.get(f"https://www.facebook.com/marketplace/montreal/propertyrentals?exact=false&latitude=45.50889&longitude=-73.63167&radius=7&locale=fr_CA")
+        
         #allow the page to load fully including any JavaScript that triggers API requests
-        time.sleep(15)
+        time.sleep(5)
 
         # get first request through selenium to get the headers and first results
         for request in self.driver.requests:
@@ -119,6 +167,10 @@ class SearchFacebook(BaseTool, BaseScraper):
         # Cet en-tête indique qu'on utilise l'API de recherche immobilière sur la carte
         self.session.headers.update({"x-fb-friendly-name": "CometMarketplaceRealEstateMapStoryQuery"})
     
+    #def fetch_graphql_call(query_url_fragments="/api/graphql/",timeout=10000):
+            
+
+    
     
     def get_next_cursor(self, body):
         try:
@@ -144,6 +196,9 @@ class SearchFacebook(BaseTool, BaseScraper):
             print(f"Erreur lors de l'obtention de la première requête : {e} header: {headers}")
               
         self.next_cursor = self.get_next_cursor(resp_body)
+        
+        print(f"resp_body: \n{resp_body}")
+        #self.listings.append(resp_body)
 
         # load headers to requests Sesssion
         self.load_headers(headers)
