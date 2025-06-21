@@ -43,11 +43,13 @@ class SearchFacebook(BaseTool, BaseScraper):
         return "Search in facebook marketplace for a listing according to the user's request(query)"
     
     def __init__(self,url:str):
+        print("initialisation du scraper facebook...")
         
         self.url = url
                 ##change according to the computer install here: https://googlechromelabs.github.io/chrome-for-testing/#stable
         self.driver = os.getenv("DRIVER_PATH")
         self.har = None
+        self.filtered_har = None
         self.listings = []
         
         
@@ -63,6 +65,8 @@ class SearchFacebook(BaseTool, BaseScraper):
         chrome_options.add_argument('--ignore-ssl-errors=yes')
         chrome_options.add_argument('--ignore-certificate-errors')
         
+        print(f"Chrome options chargées")
+        
         service = Service(self.driver)
         
         #seleniumwire options
@@ -70,24 +74,25 @@ class SearchFacebook(BaseTool, BaseScraper):
             "enable_har": True,
             "proxy": proxies
         }   
-        self.driver = uc.Chrome(
-            service=service,
-            options=chrome_options,
-            seleniumwire_options={"enable_har": True},
+        # self.driver = uc.Chrome(
+        #     service=service,
+        #     options=chrome_options,
+        #     seleniumwire_options={"enable_har": True},
                           
-        )
+        # )
         
-        self.get_har()
-        self.get_har_headers()
-        
-        
+        #self.filtered_har = self.get_har()
+    
         #create a http session
-        # self.session =  requests.Session() # Permet de réutiliser connexions, cookies et en-têtes entre plusieurs requêtes.
-        # self.session.proxies.update(proxies)
+        self.session =  requests.Session() # Permet de réutiliser connexions, cookies et en-têtes entre plusieurs requêtes.
+        self.session.proxies.update(proxies)
         # #ignore ssl errors
-        # self.session.verify = False
+        self.session.verify = False
         
-        # self.init_session()
+        print("les options de sessions sont chargées")
+        
+        self.init_session()
+        
         # #close the driver
         # self.driver.close()
         
@@ -101,31 +106,76 @@ class SearchFacebook(BaseTool, BaseScraper):
     
     ##methode to get the har file from the driver
     def get_har(self):
+        print("Lancement du driver")
         self.driver.get(self.url)
-        time.sleep(3)
+        time.sleep(15)
         raw_har = self.driver.har
         # si c'est une chaîne JSON, on la parse
         if isinstance(raw_har, str):
             self.har = json.loads(raw_har)
         else:
             self.har = raw_har
-        
-        # Write HAR data to file
-        with open('facebook.har', 'w') as f:
-            json.dump(self.har, f, indent=4)
             
-        #print(f"har: {self.har}")
-        self.driver.close()
+        # Extract headers, payload, url and response body for graphql requests
+        filtered_har = {
+            'log': {
+                'entries': [{
+                    'request': {
+                        'url': entry['request']['url'],
+                        'headers': entry['request']['headers'],
+                        'method': entry['request']['method'],
+                        'postData': entry['request'].get('postData', {})
+                    },
+                    'response': {
+                        'content': entry['response'].get('content', {}),
+                        'headers': entry['response'].get('headers', []),
+                        'status': entry['response'].get('status'),
+                        'statusText': entry['response'].get('statusText'),
+                        'bodySize': entry['response'].get('bodySize'),
+                        'body': entry['response'].get('body', '')
+                    }
+                } for entry in self.har['log']['entries']
+                if entry['request'].get('url') == 'https://www.facebook.com/api/graphql/']
+            }
+        }
         
-        return self.har
-    
-    def get_har_headers(self):      
+        # Write filtered HAR data to file
+        with open('facebook.har', 'w') as f:
+            json.dump(filtered_har, f, indent=4)
+            
+        return filtered_har
+    def get_har_entry(self):      
         # Extrait les headers de toutes les requêtes dans le HAR
-        headers = {}
-        for entry in self.har['log']['entries']:
-            request = entry['request']
-            headers[request['url']] = request['headers']
-        return headers
+     try:
+        # Ouvre et lit le fichier HAR
+        with open('facebook.har', 'r') as f:
+            try:
+                har_data = json.load(f)
+            except json.JSONDecodeError as e:
+                print(f"Erreur de décodage JSON: {e}")
+                return None, None, None
+            except Exception as e:
+                print(f"Erreur lors du chargement du fichier HAR: {e}")
+                return None, None, None
+            
+        for entry in har_data['log']['entries']:
+            
+            if "graphql" in entry['request']['url']:
+                print("graphql request found")
+                
+                headers = [(h["name"], h["value"]) for h in entry["request"]["headers"]]
+                payload = entry["request"].get("postData",{}).get("text","")
+                resp_text = entry["response"].get("content",{}).get("text","")
+                
+                return headers, payload, json.loads(resp_text)
+            else:
+                print("no graphql request found")
+            
+        return None, None, None
+
+     except Exception as e:
+            print(f"Erreur lors de l'extraction des headers : {e}")
+            return None, None, None
     
     
     def get_first_req(self):
@@ -174,45 +224,70 @@ class SearchFacebook(BaseTool, BaseScraper):
     
     def get_next_cursor(self, body):
         try:
-            return body["data"]["marketplace_feed_stories"]["page_info"]["end_cursor"]
+            # On descend dans data.viewer.marketplace_feed_stories.page_info
+            page_info = body["data"]["viewer"]["marketplace_feed_stories"]["page_info"]
+            raw_cursor = page_info["end_cursor"]
+            
+            # raw_cursor est une chaîne JSON encodée, on la parse si possible
+            try:
+                return json.loads(raw_cursor)
+            except json.JSONDecodeError:
+                # si ce n'est pas du JSON valide, on retourne la chaîne brute
+                return raw_cursor
+
         except KeyError as e:
             print(f"Erreur d'accès aux données : {e}")
-        # Vous pouvez ajouter ici un logging plus détaillé de la structure de body
-        return None
+            # on peut logger body pour debug :
+            # print(json.dumps(body, indent=2))
+            return None
     
     def parse_payload(self, payload):
         # Decode the data string
-        decoded_str = urllib.parse.unquote(payload.decode())
+        #decoded_str = urllib.parse.unquote(payload.decode())
 
         # Parse the string into a dictionary
-        data_dict = dict(urllib.parse.parse_qsl(decoded_str))
+        data_dict = dict(urllib.parse.parse_qsl(payload))
         
         return data_dict
     
     def init_session(self):
-        try:
-            headers, payload_to_send, resp_body = self.get_first_req()  
-        except Exception as e:
-            print(f"Erreur lors de l'obtention de la première requête : {e} header: {headers}")
+        
+        headers, payload_to_send, resp_body = self.get_har_entry()
+        print(f"headers capturés: {headers}")
+        print(f"payload capturé: {payload_to_send}")
+        
+        #si le headers n'est pas trouvé
+        if headers is None:
+            print("no headers found in har file")
+            try:
+                 print("on récupère le har file")
+                #on récupère le har file
+                 self.har = self.get_har()
+                 #on récupère les headers, payload et resp_body
+                 headers, payload_to_send, resp_body = self.get_har_entry()
+                 
+            except Exception as e:
+                print(f"Erreur lors de l'obtention de la première requête : {e} header: {headers}")
               
         self.next_cursor = self.get_next_cursor(resp_body)
-        
-        print(f"resp_body: \n{resp_body}")
+       
         #self.listings.append(resp_body)
 
         # load headers to requests Sesssion
         self.load_headers(headers)
-        print(f"les headers ont été chargés: {headers}")
+        
 
         # parse payload to normal format
         self.payload_to_send = self.parse_payload(payload_to_send)
-        print(f"le payload a été chargé: {self.payload_to_send}")
+        
 
         # update the api name we're using (map api)
         self.payload_to_send["fb_api_req_friendly_name"] = "CometMarketplaceRealEstateMapStoryQuery"
         
         # self.variables = json.loads(self.payload_to_send["variables"])
-        self.variables =  {"buyLocation":{"latitude":45.4722,"longitude":-73.5848},"categoryIDArray":[1468271819871448],"numericVerticalFields":[],"numericVerticalFieldsBetween":[],"priceRange":[0,214748364700],"radius":2000,"stringVerticalFields":[]}
+        self.variables = {"buyLocation":{"latitude":45.4722,"longitude":-73.5848},"categoryIDArray":[1468271819871448],"numericVerticalFields":[],"numericVerticalFieldsBetween":[],"priceRange":[0,214748364700],"radius":2000,"stringVerticalFields":[]}
+        
+        #self.driver.close()
     
     
     def scrape(self, lat, lon):
