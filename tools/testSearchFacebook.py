@@ -5,8 +5,12 @@ from tools.searchFacebook import SearchFacebook
 
 
 def test_search_facebook():
+    query = {"lat":"40.7128","lon":"-74.0060","bedrooms":2,"minBudget":80000,"maxBudget":200000}
     scraper = SearchFacebook("https://www.facebook.com/marketplace/montreal/propertyrentals")
-    #scraper.scrape(45.50889, -73.63167)
+    scraper.scrape(query["lat"], query["lon"],query)
 
 if __name__ == "__main__":
+
     test_search_facebook()
+    
+    
