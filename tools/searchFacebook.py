@@ -16,7 +16,7 @@ from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
 import logging
 import sys
-
+from bs4 import BeautifulSoup
 # rotating ip library
 from requests_ip_rotator import ApiGateway
 import urllib3
@@ -72,12 +72,12 @@ class SearchFacebook(BaseTool, BaseScraper):
 
         # seleniumwire options
         sw_options = {"enable_har": True, "proxy": proxies}
-        # self.driver = uc.Chrome(
-        #     service=service,
-        #     options=chrome_options,
-        #     seleniumwire_options={"enable_har": True},
+        self.driver = uc.Chrome(
+            service=service,
+            options=chrome_options,
+            seleniumwire_options={"enable_har": True},
 
-        # )
+        )
 
         # self.filtered_har = self.get_har()
 
@@ -184,42 +184,6 @@ class SearchFacebook(BaseTool, BaseScraper):
             print(f"Erreur lors de l'extraction des headers : {e}")
             return None, None, None
 
-    def get_first_req(self):
-        self.driver.get(self.url)
-        # self.driver.get(f"https://www.facebook.com/marketplace/montreal/propertyrentals?exact=false&latitude=45.50889&longitude=-73.63167&radius=7&locale=fr_CA")
-
-        # allow the page to load fully including any JavaScript that triggers API requests
-        time.sleep(5)
-
-        # get first request through selenium to get the headers and first results
-        for request in self.driver.requests:
-            # if request is a response
-            if request.response:
-                # if request is a graphql request
-                if "graphql" in request.url:
-                    print("graphql request found")
-                    # decode the response body
-                    resp_body = decode(
-                        request.response.body,
-                        request.response.headers.get("Content-Encoding", "identity"),
-                    )
-                    # convert the response body to a json object
-                    resp_body = json.loads(resp_body)
-
-                    # if the response body contains the data we want
-                    if (
-                        "marketplace_rentals_map_view_stories"
-                        in resp_body["data"]["viewer"]
-                    ):
-                        print("marketplace_rentals_map_view_stories found")
-                        # return the headers, body, and response body
-                        return (
-                            request.headers.__dict__["_headers"],
-                            request.body,
-                            resp_body,
-                        )
-        print("No matching request found")
-        return None
 
     def load_headers(self, headers):
         # Cette méthode charge les en-têtes HTTP dans la session
@@ -457,6 +421,33 @@ class SearchFacebook(BaseTool, BaseScraper):
             return float(cleaned)
         except:
             return None
+        
+    def getpageInfo(self, id:str):
+        
+        page_info = {
+            "title": "",
+            "price": "",
+            "bedrooms": "",
+            "bathrooms": "",
+            "description": "",
+            "images": [],
+            "url": "",
+            "location": "",
+        }
+        
+        url =f"https://www.facebook.com/marketplace/item/{id}/?ref=category_feed&locale=fr_CA"
+        
+        self.driver.get(url)
+        html_content = self.driver.page_source
+        
+        soup = BeautifulSoup(html_content, 'html.parser')
+        
+        title = soup.find("span", class_="f4").text
+        
+        
+        
+        
+             
 
     def scrape(self, lat, lon, query):
         print("Initialisation de la methode Scrape...")
@@ -470,7 +461,7 @@ class SearchFacebook(BaseTool, BaseScraper):
                 # Convertit les variables en JSON et les ajoute au payload
                 self.payload_to_send["variables"] = json.dumps(self.variables)
 
-                print("Payload a été mise à jour")
+                print("Payload a été mise à jour: \n",self.payload_to_send)    
 
                 # Fait une requête POST à l'API GraphQL de Facebook
                 resp_body = self.session.post(
@@ -478,7 +469,7 @@ class SearchFacebook(BaseTool, BaseScraper):
                     data=urllib.parse.urlencode(self.payload_to_send),
                 )
 
-                print("reponse: ", resp_body.json())
+                
 
                 # Vérifie que la réponse contient bien les données d'appartements
                 while (
