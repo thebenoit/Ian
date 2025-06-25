@@ -9,6 +9,7 @@ class BaseAgent(ABC):
         self.model_name = model_name
         self._model = None
         self._tools = tools or []
+        
 
     @property
     def name(self):
@@ -20,6 +21,7 @@ class BaseAgent(ABC):
         if self._model is None:
             self._model = self._init_model(self.model_name)
         return self._model
+    
 
     @property
     def tools(self):
