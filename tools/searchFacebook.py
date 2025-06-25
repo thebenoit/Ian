@@ -17,6 +17,7 @@ from selenium.webdriver.chrome.service import Service
 import logging
 import sys
 from bs4 import BeautifulSoup
+
 # rotating ip library
 from requests_ip_rotator import ApiGateway
 import urllib3
@@ -61,10 +62,11 @@ class SearchFacebook(BaseTool, BaseScraper):
 
         proxy_options = {}
 
-        chrome_options = uc.ChromeOptions()
+        self.chrome_options = uc.ChromeOptions()
         # ignore ssl errors
-        chrome_options.add_argument("--ignore-ssl-errors=yes")
-        chrome_options.add_argument("--ignore-certificate-errors")
+        self.chrome_options.add_argument("--headless")
+        self.chrome_options.add_argument("--ignore-ssl-errors=yes")
+        self.chrome_options.add_argument("--ignore-certificate-errors")
 
         print(f"Chrome options chargées")
 
@@ -72,12 +74,11 @@ class SearchFacebook(BaseTool, BaseScraper):
 
         # seleniumwire options
         sw_options = {"enable_har": True, "proxy": proxies}
-        self.driver = uc.Chrome(
-            service=service,
-            options=chrome_options,
-            seleniumwire_options={"enable_har": True},
-
-        )
+        # self.driver = uc.Chrome(
+        #     service=service,
+        #     options=chrome_options,
+        #     seleniumwire_options={"enable_har": True},
+        # )
 
         # self.filtered_har = self.get_har()
 
@@ -100,9 +101,14 @@ class SearchFacebook(BaseTool, BaseScraper):
         self.retry_delay = 10
 
     def execute(self, inputs: dict[str, Any]) -> Any:
-        query = inputs.get("query")
+        # query = {"lat":"40.7128","lon":"-74.0060","bedrooms":2,"minBudget":80000,"maxBudget":100000,"bedrooms":3,"minBedrooms":3,"maxBedrooms":4}
+        scraper = SearchFacebook(
+            "https://www.facebook.com/marketplace/montreal/propertyrentals"
+        )
+        listings = scraper.scrape(inputs["lat"], inputs["lon"], inputs)
+        print("listings: ", listings)
 
-        return "Facebook search result"
+        return listings
 
     ##methode to get the har file from the driver
     def get_har(self):
@@ -184,7 +190,6 @@ class SearchFacebook(BaseTool, BaseScraper):
             print(f"Erreur lors de l'extraction des headers : {e}")
             return None, None, None
 
-
     def load_headers(self, headers):
         # Cette méthode charge les en-têtes HTTP dans la session
 
@@ -222,6 +227,7 @@ class SearchFacebook(BaseTool, BaseScraper):
             return None
 
     def parse_payload(self, payload):
+
         # Decode the data string
         # decoded_str = urllib.parse.unquote(payload.decode())
 
@@ -260,6 +266,7 @@ class SearchFacebook(BaseTool, BaseScraper):
         self.payload_to_send = self.parse_payload(payload_to_send)
 
         # update the api name we're using (map api)
+        self.payload_to_send["doc_id"] = "29956693457255409"
         self.payload_to_send["fb_api_req_friendly_name"] = (
             "CometMarketplaceRealEstateMapStoryQuery"
         )
@@ -270,6 +277,7 @@ class SearchFacebook(BaseTool, BaseScraper):
         # self.driver.close()
 
     def add_listings(self, body):
+        print("En train d'ajouter les listings...")
         try:
             for node in body["data"]["viewer"]["marketplace_rentals_map_view_stories"][
                 "edges"
@@ -355,6 +363,10 @@ class SearchFacebook(BaseTool, BaseScraper):
 
                     if not listing_exists:
                         print("Ajout de data--------->:")
+                        print(
+                            "filtered_data: \n",
+                            filtered_data["for_sale_item"]["marketplace_listing_title"],
+                        )
                         self.listings.append(filtered_data)
         except KeyError as e:
             print(f"Erreur de structure dans le body : {e}")
@@ -421,9 +433,16 @@ class SearchFacebook(BaseTool, BaseScraper):
             return float(cleaned)
         except:
             return None
-        
-    def getpageInfo(self, id:str):
-        
+
+    def getpageInfo(self, id: str):
+        """function to get the page info of a listing with the elp of id"""
+        try:
+            page_driver = self.initialize_driver()
+
+        except Exception as e:
+            print(f"Error initializing Chrome driver: {e}")
+            return None
+
         page_info = {
             "title": "",
             "price": "",
@@ -434,20 +453,73 @@ class SearchFacebook(BaseTool, BaseScraper):
             "url": "",
             "location": "",
         }
-        
-        url =f"https://www.facebook.com/marketplace/item/{id}/?ref=category_feed&locale=fr_CA"
-        
-        self.driver.get(url)
-        html_content = self.driver.page_source
-        
-        soup = BeautifulSoup(html_content, 'html.parser')
-        
-        title = soup.find("span", class_="f4").text
-        
-        
-        
-        
-             
+
+        url = f"https://www.facebook.com/marketplace/item/{id}/?ref=category_feed&locale=fr_CA"
+
+        print("Recherche de l'annonce spécifique... ")
+        print("url: ", url)
+        page_driver.get(url)
+        print("wait 5 seconds...")
+        time.sleep(5)
+        try:
+            # Cherche le bouton X pour fermer le modal
+            close_button = page_driver.find_element(
+                By.CSS_SELECTOR, "[aria-label='Fermer']"
+            )
+            close_button.click()
+            print("modal fermé...")
+
+        except:
+            print("Pas de modal à fermer")
+
+        print("wait 5 seconds...")
+        time.sleep(5)
+
+        html_content = page_driver.page_source
+
+        # Pretty print the HTML with proper indentation
+        soup = BeautifulSoup(html_content, "html.parser")
+
+        print("get le titre")
+        # title = soup.find("span", class_="f4").text
+
+        # # Extraction du titre
+        title_element = soup.find("h1", class_=lambda c: c and "x1heor9g" in c)
+        if title_element:
+            page_info["title"] = title_element.text.strip()
+            print("title", page_info["title"], "\n")
+
+        # print("title: ", title)
+        page_driver.quit()
+
+        return page_info
+
+    def initialize_driver(self):
+        print("Initialisation du navigateur Chrome")
+
+        """Initialise et retourne une nouvelle instance du navigateur Chrome"""
+        try:
+            chrome_options = uc.ChromeOptions()
+            chrome_options.add_argument("--headless")
+            chrome_options.add_argument("--ignore-ssl-errors=yes")
+            chrome_options.add_argument("--ignore-certificate-errors")
+
+            driver_path = os.getenv("DRIVER_PATH")
+            service = Service(driver_path)
+
+            return uc.Chrome(
+                service=service,
+                options=chrome_options,
+            )
+        except Exception as e:
+            print(f"Erreur lors de l'initialisation du navigateur Chrome: {e}")
+            return None
+
+    def get_realtorca_url(self, page_number):
+        try:
+            return f"https://www.realtor.ca/realtor-search-results#province=4&page={page_number}&sort=11-A"
+        except Exception as e:
+            return None
 
     def scrape(self, lat, lon, query):
         print("Initialisation de la methode Scrape...")
@@ -458,18 +530,22 @@ class SearchFacebook(BaseTool, BaseScraper):
                 self.variables["buyLocation"]["latitude"] = lat
                 self.variables["buyLocation"]["longitude"] = lon
                 self.variables["priceRange"] = [query["minBudget"], query["maxBudget"]]
+                self.variables["numericVerticalFieldsBetween"] = [
+                    {
+                        "max": query["maxBedrooms"],  # ex: 3
+                        "min": query["minBedrooms"],  # ex: 1
+                        "name": "bedrooms",
+                    }
+                ]
+
                 # Convertit les variables en JSON et les ajoute au payload
                 self.payload_to_send["variables"] = json.dumps(self.variables)
-
-                print("Payload a été mise à jour: \n",self.payload_to_send)    
 
                 # Fait une requête POST à l'API GraphQL de Facebook
                 resp_body = self.session.post(
                     "https://www.facebook.com/api/graphql/",
                     data=urllib.parse.urlencode(self.payload_to_send),
                 )
-
-                
 
                 # Vérifie que la réponse contient bien les données d'appartements
                 while (
@@ -483,12 +559,11 @@ class SearchFacebook(BaseTool, BaseScraper):
                         "https://www.facebook.com/api/graphql/",
                         data=urllib.parse.urlencode(self.payload_to_send),
                     )
-                
 
-                # Ajoute les annonces trouvées à la base de données
+                # Ajoute les annonces trouvées à la liste
 
-                self.listings.append(resp_body.json())
-                # self.add_listings(resp_body.json())
+                # self.listings.append(resp_body.json())
+                self.add_listings(resp_body.json())
 
             except Exception as e:
                 print(f"Erreur lors de la tentative {attempt + 1}: {e}")
@@ -503,6 +578,11 @@ class SearchFacebook(BaseTool, BaseScraper):
                     return False
 
             # Attend 5 secondes entre chaque requête
+            print("wait 5 seconds...")
             time.sleep(5)
-        print(f"listings: {self.listings}")
-        return False
+
+        # Après la boucle, retourne les résultats
+        if self.listings:
+            return self.listings  # Retourne toute la liste
+        else:
+            return []  # Retourne liste vide si aucun résultat
