@@ -12,6 +12,7 @@ import json
 from langchain_core.messages import ToolMessage
 from IPython.display import Image, display
 from tools.base_tool import BaseTool
+from langgraph.checkpoint.memory import MemorySaver
 import time
 from pydantic import BaseModel, Field
 from typing import Any
@@ -19,6 +20,8 @@ from typing import Any
 load_dotenv()
 
 print("running...")
+
+memory = MemorySaver()
 
 
 class State(TypedDict):
@@ -42,7 +45,7 @@ url = "https://www.facebook.com/marketplace/montreal/propertyrentals"
 # instantiate the tools
 scraper = SearchFacebook(url)
 
-
+config = {"configurable": {"thread_id": "1"}}
 
 search_tool = StructuredTool.from_function(
     func=scraper.execute,
@@ -142,26 +145,21 @@ graphBuilder.add_conditional_edges(
 graphBuilder.add_edge("tool_node", "chatbot")
 graphBuilder.add_edge(START, "chatbot")
 #graphBuilder.add_edge("chatbot", END)
-graph = graphBuilder.compile()
+graph = graphBuilder.compile(checkpointer=memory)
 
 
 def stream_graph_updates(user_input: str):
-    for event in graph.stream({"messages": [{"role": "user", "content": user_input}]}):
+    for event in graph.stream(
+        {"messages": [{"role": "user", "content": user_input}]},
+        config=config,
+    ):
         for value in event.values():
             message = value["messages"][-1]
             if isinstance(message, ToolMessage):
                 print(f"TOOL RESULT: {message.content}")
-            print("moveout3.0:", message.content)
+            print("moveout3.0:", message.pretty_print())
             
-
-
-try:
-    display(Image(graph.get_graph().draw_mermaid_png()))
-except Exception:
-    # This requires some extra dependencies and is optional
-    pass            
-            
-
+    
 
 while True:
     try:
