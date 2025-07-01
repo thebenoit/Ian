@@ -10,6 +10,9 @@ aienvi
 envi
 __pycache__
 venv
+tags_count.txt
+extrait_50lignes.osm
+Montreal.osm.pbf
 
 
 

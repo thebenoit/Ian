@@ -100,7 +100,15 @@ class SearchFacebook(BaseTool, BaseScraper):
         self.max_retries = 3
         self.retry_delay = 10
 
-    def execute(self,lat:float,lon:float,minBudget:float,maxBudget:float,minBedrooms:int,maxBedrooms:int) -> Any:
+    def execute(
+        self,
+        lat: float,
+        lon: float,
+        minBudget: float,
+        maxBudget: float,
+        minBedrooms: int,
+        maxBedrooms: int,
+    ) -> Any:
         inputs = {
             "lat": lat,
             "lon": lon,
@@ -112,7 +120,13 @@ class SearchFacebook(BaseTool, BaseScraper):
         print("inputs: ", inputs)
         # query = {"lat":"40.7128","lon":"-74.0060","bedrooms":2,"minBudget":80000,"maxBudget":100000,"bedrooms":3,"minBedrooms":3,"maxBedrooms":4}
         listings = self.scrape(inputs["lat"], inputs["lon"], inputs)
-        print("listings: ", listings[0]["for_sale_item"]["marketplace_listing_title"]["text"])
+        if listings:
+            print(
+                "listings: ",
+                listings[0]["for_sale_item"]["marketplace_listing_title"]["text"],
+            )
+        else:
+            print("Aucune annonce trouvée")
 
         return listings
 
@@ -285,7 +299,9 @@ class SearchFacebook(BaseTool, BaseScraper):
     def add_listings(self, body):
         print("En train d'ajouter les listings...")
         try:
-            edges = body["data"]["viewer"]["marketplace_rentals_map_view_stories"]["edges"]
+            edges = body["data"]["viewer"]["marketplace_rentals_map_view_stories"][
+                "edges"
+            ]
             print(f"🔍 Nombre d'edges trouvées: {len(edges)}")
             for node in body["data"]["viewer"]["marketplace_rentals_map_view_stories"][
                 "edges"
@@ -373,7 +389,9 @@ class SearchFacebook(BaseTool, BaseScraper):
                         print("Ajout de data--------->:")
                         print(
                             "filtered_data: \n",
-                            filtered_data["for_sale_item"]["marketplace_listing_title"]["text"],
+                            filtered_data["for_sale_item"]["marketplace_listing_title"][
+                                "text"
+                            ],
                         )
                         self.listings.append(filtered_data)
         except KeyError as e:
@@ -554,6 +572,7 @@ class SearchFacebook(BaseTool, BaseScraper):
                     "https://www.facebook.com/api/graphql/",
                     data=urllib.parse.urlencode(self.payload_to_send),
                 )
+                print("resp_body: ", {k: v for k, v in list(resp_body.json()["data"]["viewer"].items())[:10]})
 
                 # Vérifie que la réponse contient bien les données d'appartements
                 while (
@@ -583,7 +602,7 @@ class SearchFacebook(BaseTool, BaseScraper):
                     print(
                         "Nombre maximum de tentatives atteint, passage au point suivant"
                     )
-                    return False
+                    return []
 
             # Attend 5 secondes entre chaque requête
             print("wait 5 seconds...")
