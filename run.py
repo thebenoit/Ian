@@ -16,6 +16,7 @@ from langgraph.checkpoint.memory import MemorySaver
 import time
 from pydantic import BaseModel, Field
 from typing import Any
+from tools.coordinatesInput import CoordinatesInput
 
 load_dotenv()
 
@@ -51,7 +52,7 @@ search_tool = StructuredTool.from_function(
     func=scraper.execute,
     name=scraper.name,
     description=scraper.description,
-    args_schema=WebScraperInput,
+    args_schema=CoordinatesInput,
 )
 
 tools = [search_tool]
