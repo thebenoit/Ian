@@ -6,32 +6,23 @@ from typing import List
 
 class GetCoordinates(BaseTool):
     def __init__(self):
-        self.osm_file = "Montreal.osm.pbf"
+        self.db_path = "data/montreal_spatialite.db"
 
-    def execute(self, city: str, location_near: List[str], radius: str):
-        
-        wanted = set(location_near)
-        handler = MyHandler(wanted)
-        
-        handler.apply_file(self.osm_file, locations=True)
-        
+    @property
+    def name(self):
+        return "get_coordinates"
+
+    @property
+    def description(self):
+        return "Find coordinates of locations based on OpenStreetMap tags (schools, parks, restaurants, etc.)"
+
+    def execute(self, city: str, location_near: dict, radius: str):
+
+        handler = MyHandler(location_near, self.db_path)
+
+        handler.search_in_sqlite()
+
         return [
-            {
-                "name": name,
-                "lat": lat,
-                "lon": lon
-            }
+            {"name": name, "lat": lat, "lon": lon}
             for name, (lat, lon) in handler.found.items()
         ]
-        
-        
-        
-    
-    
-    
-    
-    
-    
-    
-    
-    

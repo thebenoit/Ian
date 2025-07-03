@@ -17,6 +17,7 @@ import time
 from pydantic import BaseModel, Field
 from typing import Any
 from tools.coordinatesInput import CoordinatesInput
+from tools.getCooridinates import GetCoordinates
 
 load_dotenv()
 
@@ -29,22 +30,27 @@ class State(TypedDict):
     """State of the agent"""
 
     messages: Annotated[list, add_messages]
-    
+
+
 class WebScraperInput(BaseModel):
     lat: float = Field(description="The latitude of the location to search for")
     lon: float = Field(description="The longitude of the location to search for")
     minBudget: float = Field(description="The minimum budget for the rental")
     maxBudget: float = Field(description="The maximum budget for the rental")
-    minBedrooms: int = Field(description="The minimum number of bedrooms for the rental")
-    maxBedrooms: int = Field(description="The maximum number of bedrooms for the rental")
-    
-    
+    minBedrooms: int = Field(
+        description="The minimum number of bedrooms for the rental"
+    )
+    maxBedrooms: int = Field(
+        description="The maximum number of bedrooms for the rental"
+    )
+
 
 print("state initialized...")
 
 url = "https://www.facebook.com/marketplace/montreal/propertyrentals"
 # instantiate the tools
 scraper = SearchFacebook(url)
+coordinates_finder = GetCoordinates()
 
 config = {"configurable": {"thread_id": "1"}}
 
@@ -55,7 +61,14 @@ search_tool = StructuredTool.from_function(
     args_schema=CoordinatesInput,
 )
 
-tools = [search_tool]
+coordinates_tool = StructuredTool.from_function(
+    func=coordinates_finder.execute,
+    name=coordinates_finder.name,
+    description=coordinates_finder.description,
+    args_schema=CoordinatesInput,
+)
+
+tools = [search_tool, coordinates_tool]
 
 
 print("tools initialized...")
@@ -145,7 +158,7 @@ graphBuilder.add_conditional_edges(
 
 graphBuilder.add_edge("tool_node", "chatbot")
 graphBuilder.add_edge(START, "chatbot")
-#graphBuilder.add_edge("chatbot", END)
+# graphBuilder.add_edge("chatbot", END)
 graph = graphBuilder.compile(checkpointer=memory)
 
 
@@ -159,8 +172,7 @@ def stream_graph_updates(user_input: str):
             if isinstance(message, ToolMessage):
                 print(f"TOOL RESULT: {message.content}")
             print("moveout3.0:", message.pretty_print())
-            
-    
+
 
 while True:
     try:
