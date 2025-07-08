@@ -1,3 +1,4 @@
+print("Avant les imports")
 from typing import Annotated, TypedDict
 from langgraph.graph.message import add_messages
 from langgraph.graph import StateGraph, START, END
@@ -18,6 +19,8 @@ from pydantic import BaseModel, Field
 from typing import Any
 from tools.coordinatesInput import CoordinatesInput
 from tools.getCooridinates import GetCoordinates
+
+print("Imports terminés, chargement des variables d'environnement...")
 
 load_dotenv()
 

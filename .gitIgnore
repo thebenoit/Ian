@@ -17,6 +17,7 @@ Montreal.osm.pbf
 ai
 execute.pseudocode
 __pycache__
+.venv
 
 
 
