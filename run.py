@@ -25,13 +25,24 @@ print("running...")
 
 memory = MemorySaver()
 
-
+#initiate the state of the agent
 class State(TypedDict):
     """State of the agent"""
-
     messages: Annotated[list, add_messages]
+    #default values for the agent
+    city: str = None
+    location_near: dict = None
+    radius: str = None
+    minBudget: float = None
+    maxBudget: float = None
+    minBedrooms: int = None
+    maxBedrooms: int = None
+    coordinates: dict = None
 
 
+
+
+#input schema for the web scraper tool
 class WebScraperInput(BaseModel):
     lat: float = Field(description="The latitude of the location to search for")
     lon: float = Field(description="The longitude of the location to search for")
@@ -43,31 +54,35 @@ class WebScraperInput(BaseModel):
     maxBedrooms: int = Field(
         description="The maximum number of bedrooms for the rental"
     )
+    
 
 
 print("state initialized...")
 
-url = "https://www.facebook.com/marketplace/montreal/propertyrentals"
+
+
 # instantiate the tools
-scraper = SearchFacebook(url)
+scraper = SearchFacebook()
 coordinates_finder = GetCoordinates()
 
 config = {"configurable": {"thread_id": "1"}}
 
+# search facebook Marketplace according to the provided parameters
 search_tool = StructuredTool.from_function(
     func=scraper.execute,
     name=scraper.name,
     description=scraper.description,
-    args_schema=CoordinatesInput,
+    args_schema=WebScraperInput,
 )
 
+# find coordinates of locations based on OpenStreetMap tags (schools, parks, restaurants, etc.)
 coordinates_tool = StructuredTool.from_function(
     func=coordinates_finder.execute,
     name=coordinates_finder.name,
     description=coordinates_finder.description,
     args_schema=CoordinatesInput,
 )
-
+#put the tools in a list
 tools = [search_tool, coordinates_tool]
 
 
@@ -77,11 +92,10 @@ graphBuilder = StateGraph(State)
 
 print("graphBuilder initialized...")
 
-t0 = time.time()
 # init the llm
 moveout = init_chat_model("gpt-4o-mini", model_provider="openai")
-print(f"⚡ init_chat_model a pris {time.time() - t0:.2f}s")
 
+#connect the tools to the llm
 moveout = moveout.bind_tools(tools)
 
 print("moveout llm initialized and binded to tools...")
@@ -91,41 +105,13 @@ def chatbot(state: State):
     # get the last message
     return {"messages": [moveout.invoke(state["messages"])]}
 
-
-# building the tool executing node
-class BasicToolNode:
-    """A node that run the tool requested by user"""
-
-    def __init__(self, tools: list) -> None:
-        # create a dictionary of tools by name
-        self.tools_by_name = {search_tool.name: search_tool for search_tool in tools}
-
-    def __call__(self, inputs: dict):
-        # walrus operator  assign message or empty list if it's empty the if statement is false
-        if messages := inputs.get("messages", []):
-            # get latest message
-            message = messages[-1]
-        else:
-            raise ValueError("No messages found in input")
-        outputs = []
-        for tool_call in message.tool_calls:
-            print(
-                f"[BasicToolNode] appel de '{tool_call['name']}' avec args={tool_call['args']}"
-            )
-            tool_result = self.tools_by_name[tool_call["name"]].invoke(
-                tool_call["args"]
-            )
-            print("[BasicToolNode] résultat retourné :", tool_result)
-            outputs.append(
-                ToolMessage(
-                    content=json.dumps(tool_result),
-                    name=tool_call["name"],
-                    tool_call_id=tool_call["id"],
-                )
-            )
-
-            return {"messages": outputs}
-
+def validate_preferences(state: State):
+    value = interrupt(
+        "validate_preferences",
+        "Please validate your preferences",
+        state,
+    )
+    return {"preferences": value}
 
 def route_tools(
     state: State,
@@ -161,7 +147,7 @@ graphBuilder.add_edge(START, "chatbot")
 # graphBuilder.add_edge("chatbot", END)
 graph = graphBuilder.compile(checkpointer=memory)
 
-
+#stream the graph updates(display the messages)
 def stream_graph_updates(user_input: str):
     for event in graph.stream(
         {"messages": [{"role": "user", "content": user_input}]},

@@ -15,7 +15,8 @@ extrait_50lignes.osm
 Montreal.osm.pbf
 *.db
 ai
-
+execute.pseudocode
+__pycache__
 
 
 

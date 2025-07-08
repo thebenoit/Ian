@@ -17,8 +17,10 @@ class GetCoordinates(BaseTool):
         return "Find coordinates of locations based on OpenStreetMap tags (schools, parks, restaurants, etc.)"
 
     def execute(self, city: str, location_near: dict, radius: str):
+        
+        city = "Montreal"
 
-        handler = MyHandler(location_near, self.db_path)
+        handler = MyHandler(city,location_near, self.db_path)
 
         handler.search_in_sqlite()
 

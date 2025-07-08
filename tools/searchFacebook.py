@@ -47,11 +47,11 @@ class SearchFacebook(BaseTool, BaseScraper):
     def description(self) -> str:
         return "Search in facebook marketplace for a listing according to the user's request(query)"
 
-    def __init__(self, url: str):
+    def __init__(self):
         urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
         print("initialisation du scraper facebook...")
 
-        self.url = url
+        self.url = "https://www.facebook.com/marketplace/montreal/propertyrentals"
         ##change according to the computer install here: https://googlechromelabs.github.io/chrome-for-testing/#stable
         self.driver = os.getenv("DRIVER_PATH")
         self.har = None
@@ -123,7 +123,9 @@ class SearchFacebook(BaseTool, BaseScraper):
         if listings:
             print(
                 "listings: ",
-                listings[0]["for_sale_item"]["marketplace_listing_title"]["text"],
+                listings[0]["for_sale_item"]["marketplace_listing_title"].get(
+                    "text", listings[0]["for_sale_item"]["marketplace_listing_title"]
+                ),
             )
         else:
             print("Aucune annonce trouvée")
@@ -170,7 +172,7 @@ class SearchFacebook(BaseTool, BaseScraper):
         }
 
         # Write filtered HAR data to file
-        with open("facebook.har", "w") as f:
+        with open("data/facebook.har", "w") as f:
             json.dump(filtered_har, f, indent=4)
 
         return filtered_har
@@ -179,7 +181,7 @@ class SearchFacebook(BaseTool, BaseScraper):
         # Extrait les headers de toutes les requêtes dans le HAR
         try:
             # Ouvre et lit le fichier HAR
-            with open("facebook.har", "r") as f:
+            with open("data/facebook.har", "r") as f:
                 try:
                     har_data = json.load(f)
                 except json.JSONDecodeError as e:
@@ -302,7 +304,8 @@ class SearchFacebook(BaseTool, BaseScraper):
             edges = body["data"]["viewer"]["marketplace_rentals_map_view_stories"][
                 "edges"
             ]
-            print(f"🔍 Nombre d'edges trouvées: {len(edges)}")
+            #print(f"🔍 Nombre d'edges trouvées: {len(edges)}")
+
             for node in body["data"]["viewer"]["marketplace_rentals_map_view_stories"][
                 "edges"
             ]:
@@ -310,6 +313,7 @@ class SearchFacebook(BaseTool, BaseScraper):
                     "for_sale_item" in node["node"]
                     and "id" in node["node"]["for_sale_item"]
                 ):
+                    #print("FOR SALE ITEM FOUND")
                     listing_id = node["node"]["for_sale_item"]["id"]
                     # Utiliser listing_id comme _id dans le document
                     # data = node["node"]
@@ -387,13 +391,10 @@ class SearchFacebook(BaseTool, BaseScraper):
 
                     if not listing_exists:
                         print("Ajout de data--------->:")
-                        print(
-                            "filtered_data: \n",
-                            filtered_data["for_sale_item"]["marketplace_listing_title"][
-                                "text"
-                            ],
-                        )
+                        #print("filtered_data: \n", filtered_data)
                         self.listings.append(filtered_data)
+                #else:
+                    #print("no for_sale_item found")
         except KeyError as e:
             print(f"Erreur de structure dans le body : {e}")
 
@@ -406,21 +407,21 @@ class SearchFacebook(BaseTool, BaseScraper):
             custom_title (str): Titre personnalisé de l'annonce
 
         Returns:
-            int or None: Nombre de salles de bain ou None si non trouvé
+            float or None: Nombre de salles de bain ou None si non trouvé
         """
         try:
             if not custom_title:
                 return None
 
-            # Recherche le nombre avant "salle de bain" ou "salles de bain"
+            # Recherche le nombre (entier ou décimal) avant "salle de bain" ou "bath"
             import re
 
             match = re.search(
-                r"(\d+)\s*(?:salle de bain|salles de bain|bath|baths)",
+                r"(\d+(?:\.\d+)?)\s*(?:salle de bain|salles de bain|bath|baths)",
                 custom_title.lower(),
             )
             if match:
-                return int(match.group(1))
+                return float(match.group(1))  # Utilise float() au lieu de int()
             return None
         except:
             return None
@@ -572,23 +573,30 @@ class SearchFacebook(BaseTool, BaseScraper):
                     "https://www.facebook.com/api/graphql/",
                     data=urllib.parse.urlencode(self.payload_to_send),
                 )
-                print("resp_body: ", {k: v for k, v in list(resp_body.json()["data"]["viewer"].items())[:10]})
+                #print(
+                    #"resp_body: ",
+                    # dict(list(resp_body.json().items())[:1])
+                #)
 
                 # Vérifie que la réponse contient bien les données d'appartements
-                while (
-                    "marketplace_rentals_map_view_stories"
-                    not in resp_body.json()["data"]["viewer"]
-                ):
-                    print("pas le bon type de données")  # Affiche une erreur
-                    # print(f" resp json {resp_body.json()["data"]["viewer"]}") # Affiche la réponse pour debug
-                    # Réessaie la requête
-                    resp_body = self.session.post(
-                        "https://www.facebook.com/api/graphql/",
-                        data=urllib.parse.urlencode(self.payload_to_send),
-                    )
+                try:
+                    while (
+                        "marketplace_rentals_map_view_stories"
+                        not in resp_body.json()["data"]["viewer"]
+                    ):
+                        print("pas le bon type de données")  # Affiche une erreur
+                        # print(f" resp json {resp_body.json()["data"]["viewer"]}") # Affiche la réponse pour debug
+                        # Réessaie la requête
+                        resp_body = self.session.post(
+                            "https://www.facebook.com/api/graphql/",
+                            data=urllib.parse.urlencode(self.payload_to_send),
+                        )
+                except Exception as e:
+                    print(f"Erreur lors de la vérification des données: {e}")
+                    raise
 
                 # Ajoute les annonces trouvées à la liste
-
+                print("Avant add_listings")
                 # self.listings.append(resp_body.json())
                 self.add_listings(resp_body.json())
 
@@ -610,6 +618,7 @@ class SearchFacebook(BaseTool, BaseScraper):
 
         # Après la boucle, retourne les résultats
         if self.listings:
+            print("length of listings: ", len(self.listings))
             return self.listings  # Retourne toute la liste
         else:
             return []  # Retourne liste vide si aucun résultat
