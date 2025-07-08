@@ -8,6 +8,7 @@ from tools.searchFacebook import SearchFacebook
 def test_search_facebook():
     query = {"lat":"45.4215","lon":"-75.6990","bedrooms":2,"minBudget":80000,"maxBudget":200000,"bedrooms":3,"minBedrooms":3,"maxBedrooms":4}
     scraper = SearchFacebook()
+    
     listings = scraper.scrape(query["lat"], query["lon"],query)
     print("Listings trouvés:")
     print("=" * 50)

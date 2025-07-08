@@ -112,8 +112,8 @@ class SearchFacebook(BaseTool, BaseScraper):
         inputs = {
             "lat": lat,
             "lon": lon,
-            "minBudget": minBudget,
-            "maxBudget": maxBudget,
+            "minBudget": minBudget * 10,
+            "maxBudget": maxBudget * 10,
             "minBedrooms": minBedrooms,
             "maxBedrooms": maxBedrooms,
         }
@@ -121,14 +121,14 @@ class SearchFacebook(BaseTool, BaseScraper):
         # query = {"lat":"40.7128","lon":"-74.0060","bedrooms":2,"minBudget":80000,"maxBudget":100000,"bedrooms":3,"minBedrooms":3,"maxBedrooms":4}
         listings = self.scrape(inputs["lat"], inputs["lon"], inputs)
         if listings:
-            print(
-                "listings: ",
-                listings[0]["for_sale_item"]["marketplace_listing_title"].get(
-                    "text", listings[0]["for_sale_item"]["marketplace_listing_title"]
-                ),
-            )
+            # Gérer le cas où marketplace_listing_title peut être une string ou un dict
+            title = listings[0]["for_sale_item"]["marketplace_listing_title"]
+            if isinstance(title, dict):
+                print("listings: ", title.get("text", title))
+            else:
+                print("listings: ", title)
         else:
-            print("Aucune annonce trouvée")
+            print("Aucune annonce trouvée: ")
 
         return listings
 
@@ -299,12 +299,12 @@ class SearchFacebook(BaseTool, BaseScraper):
         # self.driver.close()
 
     def add_listings(self, body):
-        print("En train d'ajouter les listings...")
+        print("cherche les listings...")
         try:
             edges = body["data"]["viewer"]["marketplace_rentals_map_view_stories"][
                 "edges"
             ]
-            #print(f"🔍 Nombre d'edges trouvées: {len(edges)}")
+            print(f"🔍 Nombre d'edges trouvées: {len(edges)}")
 
             for node in body["data"]["viewer"]["marketplace_rentals_map_view_stories"][
                 "edges"
@@ -313,7 +313,7 @@ class SearchFacebook(BaseTool, BaseScraper):
                     "for_sale_item" in node["node"]
                     and "id" in node["node"]["for_sale_item"]
                 ):
-                    #print("FOR SALE ITEM FOUND")
+                    print("FOR SALE ITEM FOUND")
                     listing_id = node["node"]["for_sale_item"]["id"]
                     # Utiliser listing_id comme _id dans le document
                     # data = node["node"]
@@ -391,10 +391,10 @@ class SearchFacebook(BaseTool, BaseScraper):
 
                     if not listing_exists:
                         print("Ajout de data--------->:")
-                        #print("filtered_data: \n", filtered_data)
+                        # print("filtered_data: \n", filtered_data)
                         self.listings.append(filtered_data)
-                #else:
-                    #print("no for_sale_item found")
+                # else:
+                # print("no for_sale_item found")
         except KeyError as e:
             print(f"Erreur de structure dans le body : {e}")
 
@@ -573,10 +573,10 @@ class SearchFacebook(BaseTool, BaseScraper):
                     "https://www.facebook.com/api/graphql/",
                     data=urllib.parse.urlencode(self.payload_to_send),
                 )
-                #print(
-                    #"resp_body: ",
-                    # dict(list(resp_body.json().items())[:1])
-                #)
+                # print(
+                # "resp_body: ",
+                # dict(list(resp_body.json().items())[:1])
+                # )
 
                 # Vérifie que la réponse contient bien les données d'appartements
                 try:
@@ -596,7 +596,7 @@ class SearchFacebook(BaseTool, BaseScraper):
                     raise
 
                 # Ajoute les annonces trouvées à la liste
-                print("Avant add_listings")
+
                 # self.listings.append(resp_body.json())
                 self.add_listings(resp_body.json())
 

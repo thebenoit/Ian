@@ -33,7 +33,7 @@ class MyHandler(osmium.SimpleHandler):
         # if no wanted tags, return the default coordinates for the city
         if self.wanted_tags is None:
             # Return Montreal's default coordinates if no tags specified
-            self.found["Montreal"] = (45.5017, -73.5673)
+            self.found["Montreal"] = ("45.5017", "-73.5673")
             return
 
         conn = apsw.Connection(self.db_path)
