@@ -53,7 +53,7 @@ config = {"configurable": {"thread_id": "1"}}
 
 
 @tool
-def search_listing(min_bedrooms: int, location_near: Optional[dict] = None, **kwargs):
+def search_listing(city: str, min_bedrooms: int, max_bedrooms: int, min_price: int, max_price: int, location_near: Optional[dict] = None):
     """Search listings in listings website according to user preferences.
 
     Args:
@@ -65,8 +65,10 @@ def search_listing(min_bedrooms: int, location_near: Optional[dict] = None, **kw
         location_near: Optional nearby locations (amenities, etc.)
     """
     default_radius = 500
-    coordinates = coord_finder(kwargs["city"], location_near, default_radius)
-    return facebook.execute(coordinates, min_bedrooms, **kwargs)
+    coordinates = coord_finder.execute(city, location_near, default_radius)
+    lat, lon = coordinates[0]["lat"], coordinates[0]["lon"]
+    print("Coordinates: ",coordinates)
+    return facebook.execute(lat, lon, min_bedrooms, max_bedrooms, min_price, max_price)
 
 
 def find_fields_missing(state: State) -> List[str]:
