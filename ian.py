@@ -62,7 +62,15 @@ def search_listing(city: str, min_bedrooms: int, max_bedrooms: int, min_price: i
         max_bedrooms: Maximum bedrooms wanted
         min_price: Minimum price wanted
         max_price: Maximum price wanted
-        location_near: Optional nearby locations (amenities, etc.)
+   location_near: Optional nearby locations using OpenStreetMap tags format. 
+                      MUST be a dictionary with OSM tags like:
+                      - For schools: {"amenity": ["school", "university", "college"]}
+                      - For parks: {"leisure": ["park", "playground"]}
+                      - For stores: {"shop": ["supermarket", "bakery"]}
+                      - For restaurants: {"amenity": ["restaurant", "cafe"]}
+                      - For transport: {"highway": ["bus_stop"]}
+                      Example: {"amenity": ["school"]} for near schools
+  
     """
     default_radius = 500
     coordinates = coord_finder.execute(city, location_near, default_radius)
@@ -189,7 +197,7 @@ def stream_graph_updates(user_input: str):
             if "messages" in value:
                 message = value["messages"][-1]
                 if isinstance(message, ToolMessage):
-                    print(f"TOOL RESULT: {message.content}")
+                    print(f"TOOL RESULT: {json.dumps(message.content, indent=2)}")
                 print("moveout3.0:", message.pretty_print())
 
 
