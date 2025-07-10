@@ -109,6 +109,9 @@ class SearchFacebook(BaseTool, BaseScraper):
         minBedrooms: int,
         maxBedrooms: int,
     ) -> Any:
+        
+        self.listings = []
+        
         inputs = {
             "lat": lat,
             "lon": lon,

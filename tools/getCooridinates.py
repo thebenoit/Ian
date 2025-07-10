@@ -23,6 +23,8 @@ class GetCoordinates(BaseTool):
         handler = MyHandler(city,location_near, self.db_path)
 
         handler.search_in_sqlite()
+        
+        print("handler.found: ", list(handler.found.items())[:1])
 
         return [
             {"name": name, "lat": lat, "lon": lon}

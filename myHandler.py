@@ -21,6 +21,7 @@ class MyHandler(osmium.SimpleHandler):
 
     def search_in_sqlite(self):
         """Search in the sqlite database for the wanted tags"""
+        self.found = {}
         # conn = sqlite3.connect(self.db_path)
         # # load the spatialite extension
         # conn.enable_load_extension(True)
