@@ -19,3 +19,4 @@ class BaseTool(ABC):
     def execute(self, inputs: dict[str, Any]) -> Any:
         """Execute the tool with the given parameters"""
         raise NotImplementedError
+    

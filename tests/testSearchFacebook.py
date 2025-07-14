@@ -13,6 +13,7 @@ def test_search_facebook():
     print("Listings trouvés:")
     print("=" * 50)
     for listing in listings:
+        print(f"Listing: {listing}")
         print(f"Titre: {listing['for_sale_item']['marketplace_listing_title']}")
         print(f"Prix: {listing['for_sale_item']['formatted_price']['text']}")
         print(f"Adresse: {listing['for_sale_item']['custom_sub_titles_with_rendering_flags'][0]['subtitle']}")

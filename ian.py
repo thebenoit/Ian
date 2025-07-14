@@ -1,19 +1,36 @@
 print("Avant les imports")
 from typing import Annotated, TypedDict, List, Dict, Optional
+print("Import des types de base effectué")
 from langgraph.graph.message import add_messages
+print("Import de add_messages effectué")
 from langgraph.graph import StateGraph, START, END
+print("Import des composants de base du graph effectué")
 from langchain.chat_models import init_chat_model
+print("Import du modèle de chat effectué")
 from langchain_openai import ChatOpenAI
+print("Import de ChatOpenAI effectué")
 from langchain_core.tools import tool
+print("Import du décorateur tool effectué")
 from dotenv import load_dotenv
+print("Import de load_dotenv effectué")
 from tools.searchFacebook import SearchFacebook
+print("Import de l'outil de recherche Facebook effectué")
 from langgraph.prebuilt import ToolNode
+print("Import de ToolNode effectué")
 from langgraph.prebuilt import tools_condition
+print("Import de tools_condition effectué")
 from langchain.tools import Tool
+print("Import de Tool effectué")
 from langchain.tools import StructuredTool
+print("Import de StructuredTool effectué")
 import os
+print("Import de os effectué")
+import random
+print("Import de random effectué")
 import json
+print("Import de json effectué")
 from langchain_core.messages import ToolMessage
+print("Import de ToolMessage effectué")
 
 # from IPython.display import Image, display  # Commenté car problématique
 from tools.base_tool import BaseTool
@@ -36,7 +53,10 @@ class RangeFilter(TypedDict, total=False):
     min: int
     max: int
 
+
 print("Initialisation du state...")
+
+
 class State(TypedDict):
     messages: Annotated[List, add_messages]
     bedrooms: Dict[str, RangeFilter]
@@ -53,7 +73,14 @@ config = {"configurable": {"thread_id": "1"}}
 
 
 @tool
-def search_listing(city: str, min_bedrooms: int, max_bedrooms: int, min_price: int, max_price: int, location_near: Optional[dict] = None):
+def search_listing(
+    city: str,
+    min_bedrooms: int,
+    max_bedrooms: int,
+    min_price: int,
+    max_price: int,
+    location_near: Optional[dict] = None,
+):
     """Search listings in listings website according to user preferences.
 
     Args:
@@ -62,7 +89,7 @@ def search_listing(city: str, min_bedrooms: int, max_bedrooms: int, min_price: i
         max_bedrooms: Maximum bedrooms wanted
         min_price: Minimum price wanted
         max_price: Maximum price wanted
-        location_near: Optional nearby locations using OpenStreetMap tags format. 
+        location_near: Optional nearby locations using OpenStreetMap tags format.
                       MUST be a dictionary with OSM tags like:
                       - For schools: {"amenity": ["school", "university", "college"]}
                       - For parks: {"leisure": ["park", "playground"]}
@@ -70,12 +97,20 @@ def search_listing(city: str, min_bedrooms: int, max_bedrooms: int, min_price: i
                       - For restaurants: {"amenity": ["restaurant", "cafe"]}
                       - For transport: {"highway": ["bus_stop"]}
                       Example: {"amenity": ["school"]} for near schools
-  
+
     """
     default_radius = 500
     coordinates = coord_finder.execute(city, location_near, default_radius)
-    lat, lon = coordinates[0]["lat"], coordinates[0]["lon"]
-    print("Coordinates_name: ",coordinates[0]["name"], "Coordinates_lat: ",coordinates[0]["lat"], "Coordinates_lon: ",coordinates[0]["lon"])
+    randomIndex = random.randrange(len(coordinates))
+    lat, lon = coordinates[randomIndex]["lat"], coordinates[randomIndex]["lon"]
+    print(
+        "Coordinates_name: ",
+        coordinates[randomIndex]["name"],
+        "Coordinates_lat: ",
+        coordinates[randomIndex]["lat"],
+        "Coordinates_lon: ",
+        coordinates[randomIndex]["lon"],
+    )
     return facebook.execute(lat, lon, min_price, max_price, min_bedrooms, max_bedrooms)
 
 
@@ -187,7 +222,8 @@ graph_builder.add_edge("tools", "chatbot")
 memory = MemorySaver()
 graph = graph_builder.compile(checkpointer=memory)
 
-#stream the graph updates(display the messages)
+
+# stream the graph updates(display the messages)
 def stream_graph_updates(user_input: str):
     for event in graph.stream(
         {"messages": [{"role": "user", "content": user_input}]},
@@ -214,4 +250,3 @@ while True:
         print("User: " + user_input)
         stream_graph_updates(user_input)
         break
-
