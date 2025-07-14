@@ -1,9 +1,14 @@
 import asyncio
 from crawl4ai import AsyncWebCrawler
 from crawl4ai.async_configs import BrowserConfig, CrawlerRunConfig
+from tools.onePage import OnePage
 
 facebook_url = "https://www.facebook.com/marketplace/item/1783373245898279/"
 moveout_url = "https://www.moveout.ai"
+
+async def test4():
+    one_page = OnePage()
+    await one_page.fetch_page(facebook_url)
 
 async def test3():
     browser_config = BrowserConfig(verbose=True)  # Default browser configuration
