@@ -18,6 +18,7 @@ ai
 execute.pseudocode
 __pycache__
 .venv
+output.html
 
 
 

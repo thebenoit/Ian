@@ -1,8 +1,10 @@
+print("importing")
 import sys
 import os
 import re
 import asyncio
 from dotenv import load_dotenv
+
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
 load_dotenv()
@@ -10,6 +12,8 @@ import asyncio
 from crawl4ai import AsyncWebCrawler
 from crawl4ai.async_configs import BrowserConfig, CrawlerRunConfig
 from tools.onePage import OnePage
+
+print("import finished")
 
 print("import finished")
 facebook_url = "https://www.facebook.com/marketplace/item/1783373245898279/"
@@ -40,8 +44,8 @@ async def test3():
 
         if result.success:
             # Print clean content
-            print("Content:", result.markdown[:500])  # First 500 chars
-            print("Content:", result.html[:500])  # First 500 chars
+            print("markdown:", result.markdown[:500])  # First 500 chars
+            print("html:", result.html[:500])  # First 500 chars
             print("url: ", result.url)
             # print("clean html:", result.html)
 

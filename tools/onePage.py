@@ -9,7 +9,8 @@ from crawl4ai import (
     CacheMode,
     RoundRobinProxyStrategy,
     ProxyConfig,
-    
+    JsonCssExtractionStrategy,
+    JsonCssExtractionStrategy
 )
 
 
@@ -23,6 +24,15 @@ class OnePage(BaseTool, BaseScraper):
         self.payload_to_send = None
         self.cookies = None
         ignore_ssl_errors = True
+        
+        self.schema = {
+            "name":"Facebook Marketplace Listing"
+            "field": [
+                
+            ]
+                
+            
+        }
         
     @property
     def name(self):
@@ -71,19 +81,43 @@ class OnePage(BaseTool, BaseScraper):
         browser_config = BrowserConfig(
             verbose=True,
             headless=True,
-            user_agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36"
-            #cookies="datr=Kt1aaJzfABZM7avRtLfDCUmV; sb=Kt1aaD5JktL8FtgYs3lBovg6; wd=1440x788"
+            user_agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36",
+            extra_args=[
+    "--disable-blink-features=AutomationControlled",
+    "--disable-dev-shm-usage", 
+    "--no-sandbox"
+],
+            # cookies = {
+            #     "datr": "Kt1aaJzfABZM7avRtLfDCUmV",
+            #     "sb": "Kt1aaD5JktL8FtgYs3lBovg6",
+            #     "wd": "1440x788"
+            # }
         )
 
         config = CrawlerRunConfig(
             cache_mode=CacheMode.BYPASS,
-            proxy_rotation_strategy=proxy_strategy
+            wait_for_images=True,
+            proxy_rotation_strategy=proxy_strategy,
+            excluded_tags=["form", "header", "footer"],
+            keep_data_attributes=False,
+            remove_overlay_elements=True,
+            js_code=[
+        # Attendre que la page soit chargée
+        "await new Promise(resolve => setTimeout(resolve, 5000));",
+        # Scroll pour déclencher le lazy loading
+        "window.scrollTo(0, document.body.scrollHeight);",
+        "await new Promise(resolve => setTimeout(resolve, 2000));",
+        # Cliquer sur voir plus avec sélecteurs Facebook
+        "document.querySelectorAll('[role=\"button\"]').forEach(btn => { if(btn.textContent.includes('See more') || btn.textContent.includes('Voir plus')) btn.click(); });",
+    ]
+            #extraction_strategy=JsonCssExtractionStrategy(schema)
         )
 
         async with AsyncWebCrawler(config=browser_config) as crawler:
             result = await crawler.arun(url=url, config=config)
 
             if result.success:
+                #print('success: ', result.markdown)
                 print('success: ', result.markdown)
             if result.error_message:
                 print('erreur')
