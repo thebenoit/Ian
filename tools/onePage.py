@@ -8,6 +8,8 @@ from crawl4ai import (
     CrawlerRunConfig,
     CacheMode,
     RoundRobinProxyStrategy,
+    ProxyConfig,
+    
 )
 
 
@@ -15,8 +17,13 @@ class OnePage(BaseTool, BaseScraper):
     def __init__(self):
         super().__init__()
 
-        proxies = {"http": os.getenv("PROXIES_URL"), "https": os.getenv("PROXIES_URL")}
-
+        self.proxy_configs = ProxyConfig.from_env() 
+        self.user_agent = None
+        self.headers = None
+        self.payload_to_send = None
+        self.cookies = None
+        ignore_ssl_errors = True
+        
     @property
     def name(self):
         return "one_page"
@@ -24,28 +31,61 @@ class OnePage(BaseTool, BaseScraper):
     @property
     def description(self):
         return "fetch deeply one page(or multiple in a concurrent way)"
+    
+    def init_session(self):
+        headers, payload_to_send, resp_body = self.get_har_entry()
+        
+                # si le headers n'est pas trouvé
+        if headers is None:
+            print("no headers found in har file")
+            try:
+                print("on récupère le har file")
+                # on récupère le har file
+                self.har = self.get_har()
+                # on récupère les headers, payload et resp_body
+                headers, payload_to_send, resp_body = self.get_har_entry()
+
+            except Exception as e:
+                print(
+                    f"Erreur lors de l'obtention de la première requête : {e} header: {headers}"
+                )
+    
+    def execute(self, url: str):
+        return "allo"
+    
+    
+    
+    def scrape(self, url: str):
+        return "allo"
 
     async def fetch_page(self, url: str):
 
         # load proxies and create rotation strategy
-        proxy_strategy = RoundRobinProxyStrategy(proxies)
+        proxy_strategy = None
+        if self.proxy_configs:
+            proxy_strategy = RoundRobinProxyStrategy(self.proxy_configs)
+        else:
+            print("⚠️  Aucun proxy configuré. Définissez la variable d'environnement PROXIES_URL")
+
 
         browser_config = BrowserConfig(
             verbose=True,
             headless=True,
-            user_agent="--user-agent=Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            user_agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36"
+            #cookies="datr=Kt1aaJzfABZM7avRtLfDCUmV; sb=Kt1aaD5JktL8FtgYs3lBovg6; wd=1440x788"
         )
 
         config = CrawlerRunConfig(
-            proxy_strategy=proxy_strategy,
+            cache_mode=CacheMode.BYPASS,
+            proxy_rotation_strategy=proxy_strategy
         )
 
         async with AsyncWebCrawler(config=browser_config) as crawler:
             result = await crawler.arun(url=url, config=config)
 
             if result.success:
-                print(result.markdown)
+                print('success: ', result.markdown)
             if result.error_message:
-                print(result.error_message)
+                print('erreur')
 
 

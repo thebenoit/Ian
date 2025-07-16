@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 import json
-
+import time
 
 class BaseScraper(ABC):
     
@@ -10,6 +10,10 @@ class BaseScraper(ABC):
         raise NotImplementedError
     
     def get_har_entry(self):
+        """
+        get the har entry from the har file
+        headers, payload, resp_body 
+        """
         # Extrait les headers de toutes les requêtes dans le HAR
         try:
             # Ouvre et lit le fichier HAR
@@ -44,4 +48,48 @@ class BaseScraper(ABC):
             print(f"Erreur lors de l'extraction des headers : {e}")
             return None, None, None
 
-         
+        ##methode to get the har file from the driver
+    
+    def get_har(self,driver,url):
+        print("Lancement du driver")
+        driver.get(url)
+        time.sleep(15)
+        raw_har = self.driver.har
+        # si c'est une chaîne JSON, on la parse
+        if isinstance(raw_har, str):
+            self.har = json.loads(raw_har)
+        else:
+            self.har = raw_har
+
+        # Extract headers, payload, url and response body for graphql requests
+        filtered_har = {
+            "log": {
+                "entries": [
+                    {
+                        "request": {
+                            "url": entry["request"]["url"],
+                            "headers": entry["request"]["headers"],
+                            "method": entry["request"]["method"],
+                            "postData": entry["request"].get("postData", {}),
+                        },
+                        "response": {
+                            "content": entry["response"].get("content", {}),
+                            "headers": entry["response"].get("headers", []),
+                            "status": entry["response"].get("status"),
+                            "statusText": entry["response"].get("statusText"),
+                            "bodySize": entry["response"].get("bodySize"),
+                            "body": entry["response"].get("body", ""),
+                        },
+                    }
+                    for entry in self.har["log"]["entries"]
+                    if entry["request"].get("url")
+                    == "https://www.facebook.com/api/graphql/"
+                ]
+            }
+        }
+
+        # Write filtered HAR data to file
+        with open("data/facebook.har", "w") as f:
+            json.dump(filtered_har, f, indent=4)
+
+        return filtered_har     

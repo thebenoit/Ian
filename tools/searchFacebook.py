@@ -63,7 +63,7 @@ class SearchFacebook(BaseTool, BaseScraper):
         proxy_options = {}
 
         self.chrome_options = uc.ChromeOptions()
-        
+
         # ignore ssl errors
         self.chrome_options.add_argument("--headless")
         self.chrome_options.add_argument("--ignore-ssl-errors=yes")
@@ -110,9 +110,9 @@ class SearchFacebook(BaseTool, BaseScraper):
         minBedrooms: int,
         maxBedrooms: int,
     ) -> Any:
-        
+
         self.listings = []
-        
+
         inputs = {
             "lat": lat,
             "lon": lon,
@@ -536,6 +536,8 @@ class SearchFacebook(BaseTool, BaseScraper):
 
                 # Convertit les variables en JSON et les ajoute au payload
                 self.payload_to_send["variables"] = json.dumps(self.variables)
+
+                print("headers: ", self.session.headers, "\n")
 
                 # Fait une requête POST à l'API GraphQL de Facebook
                 resp_body = self.session.post(
