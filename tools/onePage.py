@@ -29,12 +29,13 @@ class OnePage(BaseTool, BaseScraper):
             "name": "Facebook Images",
             "baseSelector": "body",
             "fields": [
-                {
-                    "name":"Description",
-                    #x193iq5w xeuugli x13faqbe x1vvkbs xlh3980 xvmahel x1n0sxbx x1lliihq x1s928wv xhkezso x1gmr53x x1cpjm7i x1fgarty x1943h6x x4zkp8e x3x7a5m x6prxxf xvq8zen xo1l8bm xzsf02u
-                    "selector":"span.x193iq5w.xeuugli.x13faqbe.x1vvkbs.xlh3980.xvmahel.x1n0sxbx.x1lliihq.x1s928wv.xhkezso.x1gmr53x.x1cpjm7i.x1fgarty.x1943h6x.x4zkp8e.x3x7a5m.x6prxxf.xvq8zen.xo1l8bm.xzsf02u",
-                    "type":"text"
-                },
+                
+                    {
+                        "name": "Description", 
+                        "selector": "div.xz9dl7a > div[aria-hidden='false'] > span[dir='auto']",
+                        "type": "text"
+                    },
+                
                 {
                  
                      "name":"sous_titre_details",
@@ -47,22 +48,19 @@ class OnePage(BaseTool, BaseScraper):
                          }
                      ],
                 
-                #    "name":"when_was_listed",
-                #    "selector":"span.x193iq5w xeuugli x13faqbe x1vvkbs xlh3980 xvmahel x1n0sxbx x1lliihq x1s928wv xhkezso x1gmr53x x1cpjm7i x1fgarty x1943h6x x4zkp8e x3x7a5m x6prxxf xvq8zen xo1l8bm xzsf02u x1yc453h",
-                #    "type":"text"
                 },
-                {
-                    "name":"Details",
-                    "selector":"div.xwib8y2",
-                    "type":"nested_list",
-                    "fields":[
-                       { "name":"un_detail",
-                        "selector":"div, span.x193iq5w.xeuugli.x13faqbe.x1vvkbs.xlh3980.xvmahel.x1n0sxbx.x1lliihq.x1s928wv.xhkezso.x1gmr53x.x1cpjm7i.x1fgarty.x1943h6x.x4zkp8e.x3x7a5m.x6prxxf.xvq8zen.xo1l8bm.xzsf02u.x1yc453h",
-                        "type":"text"
-                       }
-                    ],
+                # {
+                #     "name":"Details",
+                #     "selector":"div.xwib8y2",
+                #     "type":"nested_list",
+                #     "fields":[
+                #        { "name":"un_detail",
+                #         "selector":"div, span.x193iq5w.xeuugli.x13faqbe.x1vvkbs.xlh3980.xvmahel.x1n0sxbx.x1lliihq.x1s928wv.xhkezso.x1gmr53x.x1cpjm7i.x1fgarty.x1943h6x.x4zkp8e.x3x7a5m.x6prxxf.xvq8zen.xo1l8bm.xzsf02u.x1yc453h",
+                #         "type":"text"
+                #        }
+                #     ],
                     
-                },
+                # },
                 {
                     "name": "images",
                     "selector": "div[role='main']",
