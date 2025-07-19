@@ -14,7 +14,7 @@ class MyHandler(osmium.SimpleHandler):
         print("MyHandler initialized")
         ##initialiser la sous classe (osmium.SimpleHandler)
         # super().__init__()
-        self.city = "Montreal"
+        self.city = city #"Montreal"
         self.wanted_tags = wanted_tags
         self.found: Dict[str, Tuple[float, float]] = {}
         self.db_path = db_path
@@ -41,7 +41,7 @@ class MyHandler(osmium.SimpleHandler):
         conn.enableloadextension(True)
         conn.loadextension("/opt/homebrew/opt/libspatialite/lib/mod_spatialite.dylib")
         cursor = conn.cursor()
-
+     
         for tag_key, tag_values in self.wanted_tags.items():
             for tag_value in tag_values:
                 # construct the query

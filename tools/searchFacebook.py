@@ -537,7 +537,7 @@ class SearchFacebook(BaseTool, BaseScraper):
                 # Convertit les variables en JSON et les ajoute au payload
                 self.payload_to_send["variables"] = json.dumps(self.variables)
 
-                print("headers: ", self.session.headers, "\n")
+                #print("headers: ", self.session.headers, "\n")
 
                 # Fait une requête POST à l'API GraphQL de Facebook
                 resp_body = self.session.post(
@@ -547,7 +547,7 @@ class SearchFacebook(BaseTool, BaseScraper):
                 # print(
                 # "resp_body: ",
                 # dict(list(resp_body.json().items())[:1])
-                # )
+                # )  
 
                 # Vérifie que la réponse contient bien les données d'appartements
                 try:
