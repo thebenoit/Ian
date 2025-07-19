@@ -23,8 +23,6 @@ from langgraph.checkpoint.memory import MemorySaver
 import time
 from pydantic import BaseModel, Field
 from typing import Any
-from tools.coordinatesInput import CoordinatesInput
-from tools.getCooridinates import GetCoordinates
 from langgraph.types import interrupt, Command
 
 print("Imports terminés, chargement des variables d'environnement...")
@@ -52,7 +50,6 @@ class State(TypedDict):
 
 # Initialize services
 facebook = SearchFacebook()
-coord_finder = GetCoordinates()
 google_places = GooglePlaces()
 
 config = {"configurable": {"thread_id": "1"}}
