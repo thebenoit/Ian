@@ -3,9 +3,11 @@ from .bases.base_scraper import BaseScraper
 from .searchFacebook import SearchFacebook
 from .getCooridinates import GetCoordinates
 from .onePage import OnePage
+from .googlePlaces import GooglePlaces  
 
 __all__ = ["BaseTool",
            "BaseScraper", 
            "SearchFacebook",
            "GetCoordinates", 
-           "OnePage"]
+            "OnePage",
+            "GooglePlaces"]
