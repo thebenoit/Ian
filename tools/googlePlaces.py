@@ -33,9 +33,11 @@ class GooglePlaces(BaseTool):
             
         if location_near:
             location_near = " ".join(location_near)
+            print("location_near: ",location_near)
             text_query.append(f"{location_near}")
             
         if city:
+            print("city: ",city)
             text_query.append(f"in {city}")
             
         

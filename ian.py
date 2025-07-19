@@ -65,7 +65,7 @@ def search_listing(
     max_bedrooms: int,
     min_price: int,
     max_price: int,
-    location_near: Optional[dict] = None,
+    location_near: Optional[list] = None,
 ):
     """Search listings in listings website according to user preferences.
 
@@ -75,14 +75,7 @@ def search_listing(
         max_bedrooms: Maximum bedrooms wanted
         min_price: Minimum price wanted
         max_price: Maximum price wanted
-        location_near: Optional nearby locations using OpenStreetMap tags format.
-                      MUST be a dictionary with OSM tags like:
-                      - For schools: {"amenity": ["school", "university", "college"]}
-                      - For parks: {"leisure": ["park", "playground"]}
-                      - For stores: {"shop": ["supermarket", "bakery"]}
-                      - For restaurants: {"amenity": ["restaurant", "cafe"]}
-                      - For transport: {"highway": ["bus_stop"]}
-                      Example: {"amenity": ["school"]} for near schools
+        location_near: Optional nearby locations in a list
 
     """
     default_radius = 500
@@ -241,3 +234,5 @@ while True:
         print("User: " + user_input)
         stream_graph_updates(user_input)
         break
+    
+    
