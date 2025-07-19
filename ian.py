@@ -1,36 +1,21 @@
-print("Avant les imports")
 from typing import Annotated, TypedDict, List, Dict, Optional
-print("Import des types de base effectué")
 from langgraph.graph.message import add_messages
-print("Import de add_messages effectué")
 from langgraph.graph import StateGraph, START, END
-print("Import des composants de base du graph effectué")
 from langchain.chat_models import init_chat_model
-print("Import du modèle de chat effectué")
 from langchain_openai import ChatOpenAI
-print("Import de ChatOpenAI effectué")
 from langchain_core.tools import tool
-print("Import du décorateur tool effectué")
 from dotenv import load_dotenv
-print("Import de load_dotenv effectué")
 from tools.searchFacebook import SearchFacebook
-print("Import de l'outil de recherche Facebook effectué")
 from langgraph.prebuilt import ToolNode
-print("Import de ToolNode effectué")
 from langgraph.prebuilt import tools_condition
-print("Import de tools_condition effectué")
 from langchain.tools import Tool
-print("Import de Tool effectué")
 from langchain.tools import StructuredTool
-print("Import de StructuredTool effectué")
 import os
-print("Import de os effectué")
 import random
-print("Import de random effectué")
 import json
-print("Import de json effectué")
 from langchain_core.messages import ToolMessage
-print("Import de ToolMessage effectué")
+from tools.googlePlaces import GooglePlaces
+
 
 # from IPython.display import Image, display  # Commenté car problématique
 from tools.base_tool import BaseTool
@@ -68,6 +53,7 @@ class State(TypedDict):
 # Initialize services
 facebook = SearchFacebook()
 coord_finder = GetCoordinates()
+google_places = GooglePlaces()
 
 config = {"configurable": {"thread_id": "1"}}
 
@@ -100,17 +86,22 @@ def search_listing(
 
     """
     default_radius = 500
-    coordinates = coord_finder.execute(city, location_near, default_radius)
-    randomIndex = random.randrange(len(coordinates))
-    lat, lon = coordinates[randomIndex]["lat"], coordinates[randomIndex]["lon"]
+    response = google_places.execute(city, location_near)
+    places = response.get('places', [])
+    if not places:
+        return []
+        
+    randomIndex = random.randrange(len(places))
+    selected_place = places[randomIndex]
+    lat = selected_place['location']['latitude']
+    lon = selected_place['location']['longitude']
+    name = selected_place['displayName']['text']
+    
     print(
-        "Coordinates_name: ",
-        coordinates[randomIndex]["name"],
-        "Coordinates_lat: ",
-        coordinates[randomIndex]["lat"],
-        "Coordinates_lon: ",
-        coordinates[randomIndex]["lon"],
+        "Selected location:",
+        f"{name} (lat: {lat}, lon: {lon})"
     )
+    
     return facebook.execute(lat, lon, min_price, max_price, min_bedrooms, max_bedrooms)
 
 

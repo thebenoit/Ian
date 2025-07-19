@@ -55,11 +55,11 @@ class GooglePlaces(BaseTool):
             )
             response.raise_for_status()
             print(response.json())
-            #return response.json()
+            return response.json()
             
         except requests.exceptions.RequestException as e:
             print(f"Erreur lors de la requête: {e}")
-            #return None
+            return None
             
         
         
