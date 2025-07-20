@@ -1,35 +1,47 @@
-import fastapi
+# server.py
 import os
-from fastapi import FastAPI
 import uvicorn
-from copilotkit import LangGraphAGUIAgent 
-from ag_ui_langgraph import add_langgraph_fastapi_endpoint 
 from agents.ian import graph
+from fastapi import FastAPI
+from pydantic import BaseModel
+from typing import Optional, List
+from langchain_core.messages import HumanMessage, AIMessage
 
 app = FastAPI()
 
-add_langgraph_fastapi_endpoint(
-    app=app,
-    agent=LangGraphAGUIAgent(
-        name="ian",
-        description="A chatbot that can help you find appartments all over the world",
-        graph=graph
-    ),
-    path="/chat",
-)
+class ChatRequest(BaseModel):
+    message: str
+    chat_history: Optional[List[dict]] = None
 
-# add new route for health check
+# Route de santé (optionnelle, LangGraph a déjà ses endpoints)
 @app.get("/health")
-def health():
-    """Health check."""
+async def health():
     return {"status": "ok"}
- 
-def main():
-    """Run the uvicorn server."""
-    port = int(os.getenv("PORT", "8000"))
-    uvicorn.run(
-        "server:app", # the path to your FastAPI file, replace this if its different
-        host="0.0.0.0",
-        port=port,
-        reload=True,
-    )
+
+@app.get("/")
+def read_root():
+    return {"Hello": "World"}
+
+@app.post("/chat")
+async def chat(request: ChatRequest):
+    # get the user message
+    user_message = request.message
+    # get the chat history
+    chat_history.append(HumanMessage(content=user_message))
+    input_data = {"messages": chat_history}
+    response = await graph.ainvoke(chat_history=input_data)
+    
+    return {"response": response.json()}
+
+# def main():
+#     print("Starting LangGraph server...")
+#     port = int(os.getenv("PORT", "2024"))
+#     uvicorn.run(
+#         app,
+#         host="0.0.0.0", 
+#         port=port,
+#         reload=True,
+#     )
+
+# if __name__ == "__main__":
+#     main()
