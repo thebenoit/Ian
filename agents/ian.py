@@ -2,7 +2,7 @@ from typing import Annotated, TypedDict, List, Dict, Optional
 from langgraph.graph.message import add_messages
 from langgraph.graph import StateGraph, START, END
 from langchain.chat_models import init_chat_model
-from langchain_openai import ChatOpenAI
+#from langchain_openai import ChatOpenAI
 from langchain_core.tools import tool
 from dotenv import load_dotenv
 from tools.searchFacebook import SearchFacebook

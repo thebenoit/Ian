@@ -12,7 +12,7 @@ from selenium.webdriver.common.by import By
 from pymongo import MongoClient
 from seleniumwire.utils import decode
 from selenium.webdriver.chrome.options import Options
-from selenium import webdriver
+#from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
 import logging
 import sys

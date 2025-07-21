@@ -10,6 +10,7 @@ from langchain_core.messages import HumanMessage, AIMessage
 app = FastAPI()
 
 class ChatRequest(BaseModel):
+    system_prompt:str
     message: str
     chat_history: Optional[List[dict]] = None
 
@@ -26,12 +27,23 @@ def read_root():
 async def chat(request: ChatRequest):
     # get the user message
     user_message = request.message
+    
+    # Initialize chat history if not provided
+    if request.chat_history is None:
+        chat_history = []
+    else:
+        chat_history = request.chat_history
+    
     # get the chat history
     chat_history.append(HumanMessage(content=user_message))
-    input_data = {"messages": chat_history}
-    response = await graph.ainvoke(chat_history=input_data)
+    input_data = {
+        "messages": chat_history,
+    }
+    config = {"configurable": {"thread_id": "123"}}
     
-    return {"response": response.json()}
+    response = await graph.ainvoke(input_data,config)
+    
+    return {"response": response}
 
 # def main():
 #     print("Starting LangGraph server...")
