@@ -2,15 +2,21 @@ from typing import Annotated, TypedDict, List, Dict, Optional
 from langgraph.graph.message import add_messages
 from langgraph.graph import StateGraph, START, END
 from langchain.chat_models import init_chat_model
-#from langchain_openai import ChatOpenAI
+
+# from langchain_openai import ChatOpenAI
 from langchain_core.tools import tool
 from dotenv import load_dotenv
+import sys
+import os
+
+# Ajouter le répertoire parent au sys.path pour permettre l'importation des modules
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 from tools.searchFacebook import SearchFacebook
 from langgraph.prebuilt import ToolNode
 from langgraph.prebuilt import tools_condition
 from langchain.tools import Tool
 from langchain.tools import StructuredTool
-import os
 import random
 import json
 from langchain_core.messages import ToolMessage
@@ -77,21 +83,18 @@ def search_listing(
     """
     default_radius = 500
     response = google_places.execute(city, location_near)
-    places = response.get('places', [])
+    places = response.get("places", [])
     if not places:
         return []
-        
+
     randomIndex = random.randrange(len(places))
     selected_place = places[randomIndex]
-    lat = selected_place['location']['latitude']
-    lon = selected_place['location']['longitude']
-    name = selected_place['displayName']['text']
-    
-    print(
-        "Selected location:",
-        f"{name} (lat: {lat}, lon: {lon})"
-    )
-    
+    lat = selected_place["location"]["latitude"]
+    lon = selected_place["location"]["longitude"]
+    name = selected_place["displayName"]["text"]
+
+    print("Selected location:", f"{name} (lat: {lat}, lon: {lon})")
+
     return facebook.execute(lat, lon, min_price, max_price, min_bedrooms, max_bedrooms)
 
 
@@ -218,34 +221,32 @@ def stream_graph_updates(user_input: str):
                 print("moveout3.0:", message.pretty_print())
 
 
-# while True:
-#     try:
-#         user_input = input("User: ")
-#         if user_input.lower() in ["quit", "exit", "q"]:
-#             print("Goodbye!")
-#             break
-#         stream_graph_updates(user_input)
-#     except:
-#         # fallback if input() is not available
-#         user_input = "What do you know about LangGraph?"
-#         print("User: " + user_input)
-#         stream_graph_updates(user_input)
-#         break
-    
-    
-if __name__ == "__main__":
-    while True:
-        try:
-            user_input = input("User: ")
-            if user_input.lower() in ["quit", "exit", "q"]:
-                print("Goodbye!")
-                break
-            stream_graph_updates(user_input)
-        except:
-            # fallback if input() is not available
-            user_input = "What do you know about LangGraph?"
-            print("User: " + user_input)
-            stream_graph_updates(user_input)
+while True:
+    try:
+        user_input = input("User: ")
+        if user_input.lower() in ["quit", "exit", "q"]:
+            print("Goodbye!")
             break
-    
-    
+        stream_graph_updates(user_input)
+    except:
+        # fallback if input() is not available
+        user_input = "What do you know about LangGraph?"
+        print("User: " + user_input)
+        stream_graph_updates(user_input)
+        break
+
+
+# if __name__ == "__main__":
+#     while True:
+#         try:
+#             user_input = input("User: ")
+#             if user_input.lower() in ["quit", "exit", "q"]:
+#                 print("Goodbye!")
+#                 break
+#             stream_graph_updates(user_input)
+#         except:
+#             # fallback if input() is not available
+#             user_input = "What do you know about LangGraph?"
+#             print("User: " + user_input)
+#             stream_graph_updates(user_input)
+#             break
