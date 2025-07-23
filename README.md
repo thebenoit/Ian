@@ -20,7 +20,7 @@ is a autonomous ai agent that scrape various website around the world to find th
    ```
 
 3. Set up your environment variables:
-   - Create a `.env` file in the root directory
+   - Create a `.env`(only.env not the .example) file in the root directory
    - Add your OpenAI API key and other required credentials
 
 4. Run the agent:

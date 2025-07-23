@@ -16,7 +16,7 @@ from tools.onePage import OnePage
 print("import finished")
 
 print("import finished")
-facebook_url = "https://www.facebook.com/marketplace/item/1783373245898279/"
+facebook_url = "https://www.facebook.com/marketplace/item/720324280355650/"
 moveout_url = "https://www.moveout.ai"
 
 
